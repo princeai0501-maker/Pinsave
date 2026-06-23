@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PinSave – Pinterest Video Downloader</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --red: #E60023; --red-dark: #ad081b;
+    --bg: #0d0d0d; --surface: #161616; --surface2: #1f1f1f;
+    --border: #2a2a2a; --text: #f5f5f5; --muted: #888; --white: #ffffff;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; min-height: 100vh; overflow-x: hidden; }
+
+  nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 40px; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: rgba(13,13,13,0.92);
+    backdrop-filter: blur(12px); z-index: 100;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.4rem; color: var(--white); text-decoration: none; }
+  .logo-icon { width: 34px; height: 34px; background: var(--red); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+  .nav-badge { font-size: 0.72rem; font-weight: 500; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); padding: 4px 12px; border-radius: 20px; }
+
+  .hero { text-align: center; padding: 90px 20px 60px; position: relative; }
+  .hero::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 600px; height: 400px; background: radial-gradient(ellipse at center, rgba(230,0,35,0.15) 0%, transparent 70%); pointer-events: none; }
+  .hero-tag { display: inline-block; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--red); border: 1px solid rgba(230,0,35,0.35); padding: 5px 14px; border-radius: 20px; margin-bottom: 24px; }
+  .hero h1 { font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(2.4rem, 6vw, 4.2rem); line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 18px; color: var(--white); }
+  .hero h1 span { color: var(--red); }
+  .hero p { color: var(--muted); font-size: 1.05rem; font-weight: 300; max-width: 480px; margin: 0 auto 48px; line-height: 1.7; }
+
+  .input-wrap { max-width: 680px; margin: 0 auto; }
+  .url-box { display: flex; align-items: center; background: var(--surface); border: 1.5px solid var(--border); border-radius: 16px; padding: 6px 6px 6px 20px; gap: 10px; transition: border-color 0.2s; }
+  .url-box:focus-within { border-color: var(--red); box-shadow: 0 0 0 3px rgba(230,0,35,0.12); }
+  .url-box input { flex: 1; background: none; border: none; outline: none; color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.95rem; padding: 10px 0; }
+  .url-box input::placeholder { color: var(--muted); }
+  .paste-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); font-size: 0.8rem; font-family: 'Inter', sans-serif; padding: 8px 14px; border-radius: 10px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+  .paste-btn:hover { color: var(--text); border-color: #444; }
+  .download-btn { background: var(--red); color: #fff; border: none; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.95rem; padding: 14px 28px; border-radius: 12px; cursor: pointer; transition: background 0.2s, transform 0.1s; white-space: nowrap; }
+  .download-btn:hover { background: var(--red-dark); }
+  .download-btn:active { transform: scale(0.98); }
+  .download-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .hint { font-size: 0.78rem; color: var(--muted); margin-top: 14px; }
+
+  /* BACKEND URL CONFIG BOX */
+  .config-box { max-width: 680px; margin: 16px auto 0; background: rgba(230,0,35,0.06); border: 1px dashed rgba(230,0,35,0.3); border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; gap: 12px; }
+  .config-box label { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
+  .config-box input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.82rem; padding: 6px 10px; outline: none; font-family: 'Inter', sans-serif; }
+  .config-box input:focus { border-color: var(--red); }
+  .config-save { background: var(--red); color: #fff; border: none; border-radius: 8px; font-size: 0.78rem; padding: 6px 14px; cursor: pointer; font-family: 'Inter', sans-serif; font-weight: 600; }
+
+  .result-box { max-width: 680px; margin: 30px auto 0; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; display: none; animation: fadeUp 0.3s ease; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .result-box.show { display: block; }
+  .result-inner { display: flex; gap: 18px; align-items: flex-start; }
+  .thumb-wrap { position: relative; flex-shrink: 0; border-radius: 10px; overflow: hidden; }
+  .thumb-wrap img { width: 130px; height: 130px; object-fit: cover; display: block; border-radius: 10px; }
+  .play-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; }
+  .result-meta { flex: 1; min-width: 0; }
+  .result-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--white); }
+  .result-info { font-size: 0.8rem; color: var(--muted); margin-bottom: 18px; }
+  .dl-options { display: flex; flex-direction: column; gap: 8px; }
+  .dl-option { display: flex; align-items: center; justify-content: space-between; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; text-decoration: none; color: var(--text); font-size: 0.85rem; transition: border-color 0.2s, background 0.2s; cursor: pointer; }
+  .dl-option:hover { border-color: var(--red); background: rgba(230,0,35,0.06); }
+  .dl-label { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+  .dl-badge { font-size: 0.7rem; background: var(--red); color: #fff; padding: 2px 8px; border-radius: 6px; font-weight: 600; }
+  .dl-size { font-size: 0.75rem; color: var(--muted); }
+
+  .loading-wrap { text-align: center; padding: 30px; display: none; }
+  .loading-wrap.show { display: block; }
+  .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--red); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-wrap p { color: var(--muted); font-size: 0.9rem; }
+
+  .error-box { max-width: 680px; margin: 20px auto 0; background: rgba(230,0,35,0.08); border: 1px solid rgba(230,0,35,0.3); border-radius: 12px; padding: 16px 20px; font-size: 0.88rem; color: #ff6b6b; display: none; }
+  .error-box.show { display: block; }
+
+  .steps { max-width: 760px; margin: 80px auto; padding: 0 20px; }
+  .steps-header { text-align: center; margin-bottom: 48px; }
+  .steps-header h2 { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.9rem; color: var(--white); margin-bottom: 8px; }
+  .steps-header p { color: var(--muted); font-size: 0.95rem; }
+  .steps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+  .step-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 28px 22px; transition: border-color 0.2s; }
+  .step-card:hover { border-color: rgba(230,0,35,0.4); }
+  .step-num { font-family: 'Syne', sans-serif; font-size: 2rem; font-weight: 800; color: rgba(230,0,35,0.2); margin-bottom: 12px; line-height: 1; }
+  .step-icon { font-size: 1.6rem; margin-bottom: 12px; }
+  .step-card h3 { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; color: var(--white); margin-bottom: 6px; }
+  .step-card p { color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
+
+  .features { max-width: 760px; margin: 0 auto 80px; padding: 0 20px; }
+  .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .feat-item { display: flex; gap: 14px; align-items: flex-start; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+  .feat-icon { width: 38px; height: 38px; background: rgba(230,0,35,0.12); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+  .feat-text h4 { font-family: 'Syne', sans-serif; font-weight: 600; font-size: 0.9rem; color: var(--white); margin-bottom: 3px; }
+  .feat-text p { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+
+  footer { text-align: center; padding: 32px 20px; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.8rem; }
+  footer span { color: var(--red); }
+
+  @media (max-width: 600px) {
+    nav { padding: 16px 20px; }
+    .hero { padding: 60px 16px 40px; }
+    .url-box { flex-wrap: wrap; }
+    .result-inner { flex-direction: column; }
+    .thumb-wrap img { width: 100%; height: 180px; }
+    .thumb-wrap { width: 100%; }
+    .config-box { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="#">
+    <div class="logo-icon">📌</div>
+    PinSave
+  </a>
+  <span class="nav-badge">Free · No Login · HD Quality</span>
+</nav>
+
+<section class="hero">
+  <div class="hero-tag">Pinterest Downloader</div>
+  <h1>Download Pinterest<br><span>Videos & GIFs</span><br>Instantly</h1>
+  <p>Paste any Pinterest link — pin.it short links or full URLs both work.</p>
+
+  <!-- Backend URL config (set once after deploying) -->
+  <div class="config-box">
+    <label>⚙️ Backend URL:</label>
+    <input type="text" id="backendUrl" placeholder="https://your-app.railway.app" />
+    <button class="config-save" onclick="saveBackend()">Save</button>
+  </div>
+
+  <br>
+
+  <div class="input-wrap">
+    <div class="url-box">
+      <input type="text" id="urlInput" placeholder="Paste Pinterest link here... (pinterest.com or pin.it)" />
+      <button class="paste-btn" onclick="pasteFromClipboard()">📋 Paste</button>
+      <button class="download-btn" id="fetchBtn" onclick="fetchVideo()">Download</button>
+    </div>
+    <p class="hint">Supports: pinterest.com/pin/… · pin.it/… · in.pinterest.com/…</p>
+  </div>
+
+  <div class="loading-wrap" id="loading">
+    <div class="spinner"></div>
+    <p id="loadingText">Fetching video info...</p>
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <div class="result-box" id="resultBox">
+    <div class="result-inner">
+      <div class="thumb-wrap">
+        <img id="thumb" src="" alt="thumbnail" onerror="this.src='https://placehold.co/130x130/1f1f1f/888?text=📌'" />
+        <div class="play-overlay">▶</div>
+      </div>
+      <div class="result-meta">
+        <div class="result-title" id="resultTitle">Pinterest Video</div>
+        <div class="result-info" id="resultInfo">Ready to download</div>
+        <div class="dl-options" id="dlOptions"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="steps">
+  <div class="steps-header">
+    <h2>How to Download</h2>
+    <p>Three steps, under 10 seconds</p>
+  </div>
+  <div class="steps-grid">
+    <div class="step-card">
+      <div class="step-num">01</div>
+      <div class="step-icon">🔗</div>
+      <h3>Copy the Link</h3>
+      <p>Open Pinterest, tap Share on any video pin, and copy the link.</p>
+    </div>
+    <div class="step-card">
+      <div class="step-num">02</div>
+      <div class="step-icon">📋</div>
+      <h3>Paste Above</h3>
+      <p>Paste the Pinterest URL in the input box and hit Download.</p>
+    </div>
+    <div class="step-card">
+      <div class="step-num">03</div>
+      <div class="step-icon">💾</div>
+      <h3>Save Your Video</h3>
+      <p>Choose your quality and tap the download button to save.</p>
+    </div>
+  </div>
+</section>
+
+<section class="features">
+  <div class="steps-header">
+    <h2>Why PinSave?</h2>
+    <p>Built for speed and simplicity</p>
+  </div>
+  <div class="features-grid">
+    <div class="feat-item"><div class="feat-icon">⚡</div><div class="feat-text"><h4>Lightning Fast</h4><p>Videos fetched and ready in seconds.</p></div></div>
+    <div class="feat-item"><div class="feat-icon">🔓</div><div class="feat-text"><h4>No Login Required</h4><p>Download without creating an account.</p></div></div>
+    <div class="feat-item"><div class="feat-icon">📱</div><div class="feat-text"><h4>Mobile Friendly</h4><p>Works on phone, tablet, and desktop.</p></div></div>
+    <div class="feat-item"><div class="feat-icon">🎬</div><div class="feat-text"><h4>HD Quality</h4><p>Download in the highest available resolution.</p></div></div>
+    <div class="feat-item"><div class="feat-icon">🔗</div><div class="feat-text"><h4>pin.it Support</h4><p>Short links like pin.it/xxxxx work directly.</p></div></div>
+    <div class="feat-item"><div class="feat-icon">🆓</div><div class="feat-text"><h4>100% Free</h4><p>No hidden charges, always free.</p></div></div>
+  </div>
+</section>
+
+<footer>
+  Made with <span>♥</span> by PinSave · For personal use only · Respect content creators
+</footer>
+
+<script>
+  // Load saved backend URL
+  const saved = localStorage.getItem('pinsave_backend');
+  if (saved) document.getElementById('backendUrl').value = saved;
+
+  function saveBackend() {
+    const url = document.getElementById('backendUrl').value.trim().replace(/\/$/, '');
+    if (url) {
+      localStorage.setItem('pinsave_backend', url);
+      alert('✅ Backend URL saved! You can now download videos.');
+    }
+  }
+
+  function getBackendUrl() {
+    return (localStorage.getItem('pinsave_backend') || '').replace(/\/$/, '');
+  }
+
+  async function pasteFromClipboard() {
+    try {
+      const text = await navigator.clipboard.readText();
+      document.getElementById('urlInput').value = text;
+    } catch { document.getElementById('urlInput').focus(); }
+  }
+
+  function isPinterestUrl(url) { return /pinterest\.|pin\.it/i.test(url); }
+
+  function showError(msg) {
+    const el = document.getElementById('errorBox');
+    el.innerHTML = '⚠️ ' + msg;
+    el.classList.add('show');
+  }
+
+  function clearUI() {
+    document.getElementById('errorBox').classList.remove('show');
+    document.getElementById('resultBox').classList.remove('show');
+    document.getElementById('loading').classList.remove('show');
+  }
+
+  async function fetchVideo() {
+    const url = document.getElementById('urlInput').value.trim();
+    const backend = getBackendUrl();
+    clearUI();
+
+    if (!url) { showError('Please paste a Pinterest link first.'); return; }
+    if (!isPinterestUrl(url)) { showError('This doesn\'t look like a Pinterest link.'); return; }
+    if (!backend) {
+      showError('Please set your Backend URL first (the ⚙️ field above). <br><small>Deploy the backend on Railway first, then paste the URL.</small>');
+      return;
+    }
+
+    document.getElementById('loading').classList.add('show');
+    document.getElementById('loadingText').textContent = 'Fetching video info...';
+    document.getElementById('fetchBtn').disabled = true;
+
+    try {
+      const apiUrl = `${backend}/api/info?url=${encodeURIComponent(url)}`;
+      const res = await fetch(apiUrl);
+      const data = await res.json();
+
+      document.getElementById('loading').classList.remove('show');
+
+      if (!res.ok || data.error) {
+        showError(data.error || 'Could not fetch video. Make sure the pin is public and has a video.');
+        return;
+      }
+
+      showResult(data);
+
+    } catch (err) {
+      document.getElementById('loading').classList.remove('show');
+      showError('Cannot connect to backend. Make sure your Railway app is running and the URL is correct.');
+    }
+
+    document.getElementById('fetchBtn').disabled = false;
+  }
+
+  function showResult(data) {
+    document.getElementById('resultTitle').textContent = data.title || 'Pinterest Video';
+    document.getElementById('resultInfo').textContent = `By ${data.uploader || 'Pinterest'} · ${data.duration ? data.duration + 's' : 'Video'}`;
+    document.getElementById('thumb').src = data.thumbnail || '';
+
+    const opts = document.getElementById('dlOptions');
+    opts.innerHTML = '';
+
+    if (data.formats && data.formats.length > 0) {
+      data.formats.forEach((f, i) => {
+        const a = document.createElement('a');
+        a.href = f.url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.className = 'dl-option';
+        a.setAttribute('download', '');
+        a.innerHTML = `
+          <span class="dl-label">
+            ⬇ Download ${f.quality || 'Video'}
+            ${i === 0 ? '<span class="dl-badge">Best</span>' : ''}
+          </span>
+          <span class="dl-size">${f.filesize || 'MP4'}</span>
+        `;
+        opts.appendChild(a);
+      });
+    } else {
+      opts.innerHTML = '<p style="color:var(--muted);font-size:0.85rem">No downloadable video found. This pin may be an image or GIF only.</p>';
+    }
+
+    document.getElementById('resultBox').classList.add('show');
+  }
+
+  document.getElementById('urlInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') fetchVideo();
+  });
+
+  document.getElementById('urlInput').addEventListener('paste', () => {
+    setTimeout(() => {
+      const val = document.getElementById('urlInput').value;
+      if (val && isPinterestUrl(val)) fetchVideo();
+    }, 150);
+  });
+</script>
+</body>
+</html>
